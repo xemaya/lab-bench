@@ -1,4 +1,4 @@
-import { LOOKS, cloneLook } from '../engine/index.js';
+import { LOOKS, QUALITY, cloneLook } from '../engine/index.js';
 
 // The engine is tuned in metres for landscapes: shadow bias (3 cm), penumbra limits and the ambient-occlusion shader
 // all carry metre-sized constants. A bench is a 50 cm subject, so the lab is built ten times life size
@@ -52,4 +52,11 @@ export function makeBenchLook() {
     sharpen: 0.35,
   });
   return L;
+}
+
+// The engine's quality tiers size the shadow map for a 100 m frustum. A bench covers one room, and small things
+// on it (a zinc granule, a brush) need the shadow sharp, so the map and the filter are stepped up.
+export function benchQuality(name) {
+  const base = QUALITY[name] || QUALITY.high;
+  return { ...base, shadow: name === 'low' ? 2048 : 4096, shadowTaps: name === 'low' ? 16 : 32 };
 }

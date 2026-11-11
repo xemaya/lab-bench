@@ -3,8 +3,8 @@
 // file knows any chemistry beyond which bottles and metals are on the bench.
 import * as THREE from 'three';
 import GUI from 'lil-gui';
-import { createCineRenderer, QUALITY, mulberry32 } from '../../engine/index.js';
-import { makeBenchLook, cm } from '../../bench/look.js';
+import { createCineRenderer, mulberry32 } from '../../engine/index.js';
+import { makeBenchLook, benchQuality, cm } from '../../bench/look.js';
 import { buildRoom, ROOM } from '../../bench/room.js';
 import { createBenchCamera } from '../../bench/camera.js';
 import { createRoomLight } from '../../bench/environment.js';
@@ -38,12 +38,6 @@ const METAL_ORDER = ['Na', 'Zn', 'Fe', 'Cu'];
 const SPACING = cm(17);
 const LEVEL = cm(5.6); // liquid surface above the bench
 const HOLD_Y = cm(13.5); // height metals are carried at: clear of every rim
-
-// the engine's tiers size the shadow map for a 100 m frustum; here it covers one room, and small solids need it sharp
-function benchQuality(name) {
-  const base = QUALITY[name] || QUALITY.high;
-  return { ...base, shadow: name === 'low' ? 2048 : 4096, shadowTaps: name === 'low' ? 16 : 32 };
-}
 
 function start() {
   const canvas = document.getElementById('view');
