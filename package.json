@@ -1,0 +1,19 @@
+{
+  "name": "lab-bench",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A 3D lab bench for classroom experiments (three.js): put things into reagents and watch. Outcomes come from a tested rule engine, the picture only acts them out.",
+  "scripts": {
+    "dev": "node scripts/build.mjs --serve",
+    "build": "node scripts/build.mjs",
+    "test": "node --test \"experiments/**/*.test.js\""
+  },
+  "dependencies": {
+    "lil-gui": "0.20.0",
+    "three": "0.180.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}
