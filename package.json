@@ -6,7 +6,8 @@
   "description": "A 3D lab bench for classroom experiments (three.js): put things into reagents and watch. Outcomes come from a tested rule engine, the picture only acts them out.",
   "scripts": {
     "dev": "node scripts/build.mjs --serve",
-    "build": "node scripts/build.mjs",
+    "dev:motor": "node scripts/build.mjs --exp dc-motor --serve",
+    "build": "node scripts/build.mjs --exp metal-activity && node scripts/build.mjs --exp dc-motor",
     "test": "node --test \"experiments/**/*.test.js\""
   },
   "dependencies": {

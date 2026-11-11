@@ -16,9 +16,11 @@ import * as THREE from 'three';
 //   release(solid, vessel | null)  drop it in, or send it back
 //   aim(vessel | null)             which vessel to light up as the target
 //   tapVessel(vessel)              a vessel tapped with empty hands
+// `tappable: true` shows the pointer hand over anything vesselAt finds, for benches whose apparatus is operated by
+// tapping it (a switch, a magnet) rather than by carrying things to it.
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
-export function createInteraction({ canvas, camera, orbit, holdY, bounds, solidAt, vesselAt, vesselNear, grab, carry, release, aim, tapVessel }) {
+export function createInteraction({ canvas, camera, orbit, holdY, bounds, solidAt, vesselAt, vesselNear, grab, carry, release, aim, tapVessel, tappable = false }) {
   const ray = new THREE.Raycaster(),
     ndc = new THREE.Vector2(),
     plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -holdY),
@@ -134,7 +136,7 @@ export function createInteraction({ canvas, camera, orbit, holdY, bounds, solidA
       return;
     }
     if (!mode) {
-      canvas.classList.toggle('pick', !!solidAt(aimRay(e)) || (!!selected && !!vesselAt(ray)));
+      canvas.classList.toggle('pick', !!solidAt(aimRay(e)) || ((!!selected || tappable) && !!vesselAt(ray)));
       return;
     }
     if (e.pointerId !== owner) return;

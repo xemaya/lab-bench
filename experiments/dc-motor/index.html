@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>直流电动机实验台</title>
+<style>
+  /* One full-bleed WebGL view of a sunlit table; the lesson floats over it in dark glass cards. A single dark
+     chrome by design: it has to read on the bright picture, on a projector and on a classroom touch wall. */
+  :root { color-scheme: dark; --bg: #0b0c0d; --fg: #eceef0; --dim: rgba(255,255,255,.66); --faint: rgba(255,255,255,.46); --card: rgba(17,19,22,.8); --card-solid: #16181b; --line: rgba(255,255,255,.14); --soft: rgba(255,255,255,.07);
+    --accent: #ffcf70; --field: #6ea4ff; --current: #ff8a4a; --force: #46d07f; --turn: #f5bb3a; --good: #46d07f; --bad: #ff7a6b; --err-bg: rgba(90,10,10,.9);
+    --ui: -apple-system, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif; --mono: ui-monospace, Menlo, monospace;
+    --left: 178px; --right: 268px; --gap: 14px; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body { background: var(--bg); color: var(--fg); font: 14px/1.5 var(--ui); }
+  button, input, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  #view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; outline: none; }
+  #view.pick { cursor: pointer; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+
+  /* names of parts and letters of vectors, pinned to the picture */
+  #labels { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+  .tag { position: absolute; left: 0; top: 0; white-space: nowrap; padding: 2px 9px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); font-size: 13px; will-change: transform; }
+  .tag.letter { padding: 0 6px; border: 0; background: rgba(12,13,15,.72); font: italic 700 17px/1.35 Georgia, "Times New Roman", serif; }
+  .tag.field { color: var(--field); } .tag.current { color: var(--current); } .tag.force { color: var(--force); }
+
+  /* top bar */
+  #brand { position: fixed; left: var(--gap); top: var(--gap); padding: 8px 14px; }
+  #brand b { display: block; font-size: 16px; font-weight: 600; letter-spacing: .04em; }
+  #brand span { font-size: 12px; color: var(--dim); }
+  #tools { position: fixed; right: var(--gap); top: var(--gap); display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  .chip { min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  .chip:hover { border-color: var(--accent); }
+  .chip[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+  #drawerBtn { display: none; }
+
+  /* chapters */
+  #chapters { position: fixed; left: var(--gap); top: 82px; width: var(--left); padding: 8px; display: flex; flex-direction: column; gap: 2px; max-height: calc(100vh - 82px - var(--gap)); overflow: auto; }
+  #chapters button { display: flex; gap: 8px; align-items: baseline; text-align: left; min-height: 38px; padding: 6px 8px; border: 0; border-radius: 9px; background: transparent; color: var(--dim); }
+  #chapters button i { font: 11px var(--mono); color: var(--faint); font-style: normal; }
+  #chapters button:hover { background: var(--soft); color: var(--fg); }
+  #chapters button[aria-current="true"] { background: rgba(255,207,112,.13); color: var(--accent); }
+  #chapters button[aria-current="true"] i { color: var(--accent); }
+
+  /* controls */
+  #panel { position: fixed; right: var(--gap); top: 68px; bottom: var(--gap); width: var(--right); padding: 4px 14px 12px; overflow: auto; }
+  #panel h3 { margin: 14px 0 8px; font-size: 12px; font-weight: 500; letter-spacing: .12em; color: var(--faint); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .btn { min-height: 40px; padding: 4px 8px; border-radius: 10px; border: 1px solid var(--line); background: var(--soft); display: flex; align-items: center; justify-content: center; gap: 6px; text-align: center; line-height: 1.25; }
+  .btn:hover { border-color: var(--accent); }
+  .btn[aria-pressed="true"] { border-color: var(--accent); background: rgba(255,207,112,.14); color: var(--accent); }
+  .btn .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .row { display: flex; justify-content: space-between; align-items: baseline; margin-top: 10px; color: var(--dim); }
+  .row output, .read b { color: var(--fg); font-variant-numeric: tabular-nums; font-weight: 600; }
+  input[type=range] { width: 100%; margin: 6px 0 0; accent-color: var(--accent); height: 28px; }
+  .seg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 6px; }
+  .read { display: flex; justify-content: space-between; align-items: baseline; padding: 5px 0; border-bottom: 1px solid var(--soft); color: var(--dim); }
+  #status { margin: 10px 0 0; padding: 8px 10px; border-radius: 10px; background: var(--soft); font-size: 13px; }
+  #perf { margin-top: 10px; font: 10px var(--mono); color: var(--faint); }
+
+  /* caption */
+  #caption { position: fixed; left: calc(var(--left) + var(--gap) * 2); right: calc(var(--right) + var(--gap) * 2); bottom: var(--gap); padding: 12px 16px; }
+  #caption header { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  #caption header i { font: 12px var(--mono); color: var(--accent); font-style: normal; }
+  #caption h2 { margin: 0; font-size: 18px; font-weight: 600; }
+  #caption header span { color: var(--dim); font-size: 13px; }
+  #caption p { margin: 6px 0 0; text-wrap: pretty; }
+  #caption .note { color: var(--dim); font-size: 13px; }
+  #caption footer { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+  #formula { padding: 3px 10px; border-radius: 8px; background: rgba(255,207,112,.12); color: var(--accent); font-size: 13px; }
+  #caption footer .nav { margin-left: auto; display: flex; gap: 6px; }
+  #caption footer .nav button { min-width: 44px; min-height: 40px; border-radius: 10px; border: 1px solid var(--line); background: var(--soft); }
+  #task { margin-top: 8px; padding: 8px 10px; border-radius: 10px; border: 1px dashed var(--line); font-size: 13px; }
+  #task b { color: var(--accent); }
+  #task button { margin-left: 8px; min-height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--soft); }
+  #task .expect { display: block; margin-top: 4px; color: var(--good); }
+
+  #toast { position: fixed; left: 50%; top: 84px; transform: translateX(-50%); padding: 8px 16px; border-radius: 999px; background: var(--card-solid); border: 1px solid var(--accent); color: var(--accent); opacity: 0; transition: opacity .3s ease; pointer-events: none; max-width: calc(100vw - 32px); text-align: center; }
+  #toast.on { opacity: 1; }
+
+  /* dialogs */
+  dialog { width: min(760px, calc(100vw - 32px)); max-height: calc(100vh - 32px); padding: 0; border: 1px solid var(--line); border-radius: 16px; background: var(--card-solid); color: var(--fg); overflow: auto; }
+  dialog::backdrop { background: rgba(0,0,0,.55); }
+  dialog header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--card-solid); }
+  dialog header h2 { margin: 0; font-size: 17px; }
+  dialog header button { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: var(--soft); font-size: 18px; }
+  dialog .body { padding: 14px 18px 18px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+  .cards button { text-align: left; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--soft); display: block; }
+  .cards button:hover { border-color: var(--accent); }
+  .cards b { display: block; margin-bottom: 4px; }
+  .cards span { display: block; color: var(--dim); font-size: 13px; }
+  dialog textarea { width: 100%; min-height: 84px; margin-top: 6px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--soft); resize: vertical; }
+  dialog label { display: block; margin-top: 14px; color: var(--dim); font-size: 13px; }
+  #quizBar { height: 4px; border-radius: 2px; background: var(--soft); overflow: hidden; }
+  #quizBar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s ease; }
+  #quizQ { margin: 14px 0 10px; font-size: 17px; }
+  #quizOptions { display: grid; gap: 8px; }
+  #quizOptions button { text-align: left; min-height: 44px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--soft); }
+  #quizOptions button.right { border-color: var(--good); color: var(--good); }
+  #quizOptions button.wrong { border-color: var(--bad); color: var(--bad); }
+  #quizExplain { min-height: 44px; margin-top: 10px; color: var(--dim); }
+  .quizFoot { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+  .quizFoot button { min-height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--soft); }
+  .quizFoot button:disabled { opacity: .4; cursor: default; }
+
+  #boot { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: var(--bg); transition: opacity .9s ease; z-index: 5; }
+  #boot.gone { opacity: 0; pointer-events: none; }
+  #boot b { font-size: 22px; font-weight: 500; letter-spacing: .3em; }
+  #boot span { font-size: 12px; opacity: .55; letter-spacing: .12em; }
+  #err { display: none; position: fixed; left: 16px; top: 140px; max-width: 70vw; max-height: 50vh; overflow: auto; white-space: pre-wrap; background: var(--err-bg); color: #fff; font: 11px/1.4 var(--mono); padding: 8px 10px; border-radius: 6px; z-index: 9; margin: 0; }
+  body.still #boot, body.still #toast { transition: none; }
+  body.clean .ui { display: none; }
+
+  /* narrow windows: chapters become a strip, the controls a drawer */
+  @media (max-width: 1040px) {
+    :root { --left: 0px; --right: 0px; }
+    #brand span { display: none; }
+    #drawerBtn { display: inline-block; }
+    #chapters { top: 68px; right: var(--gap); width: auto; flex-direction: row; overflow-x: auto; max-height: none; }
+    #chapters button { flex: none; white-space: nowrap; }
+    #panel { top: 124px; width: min(300px, calc(100vw - 28px)); transform: translateX(calc(100% + 20px)); transition: transform .25s ease; z-index: 3; }
+    body.drawer #panel { transform: none; }
+    #caption { left: var(--gap); right: var(--gap); max-height: 42vh; overflow: auto; }
+    #caption .note { display: none; }
+    #toast { top: 128px; }
+  }
+  @media (max-width: 560px) { .chip { padding: 0 10px; font-size: 13px; } #caption h2 { font-size: 16px; } body { font-size: 13px; } }
+  @media (prefers-reduced-motion: reduce) { #boot, #toast, #panel, #quizBar i { transition: none; } }
+</style>
+</head>
+<body>
+<canvas id="view" tabindex="0" aria-label="直流电动机实验台三维场景"></canvas>
+<div id="labels"></div>
+
+<div id="brand" class="card ui"><b>直流电动机</b><span>通电线圈在磁场中受力转动</span></div>
+<div id="tools" class="ui">
+  <button class="chip" id="experimentBtn" type="button">探究实验</button>
+  <button class="chip" id="quizBtn" type="button">课堂测验</button>
+  <button class="chip" id="autoBtn" type="button" aria-pressed="false">自动讲解</button>
+  <button class="chip" id="voiceBtn" type="button" aria-pressed="false">朗读</button>
+  <button class="chip" id="fullBtn" type="button">全屏</button>
+  <button class="chip" id="drawerBtn" type="button" aria-pressed="false">参数</button>
+</div>
+
+<nav id="chapters" class="card ui" aria-label="教学章节"></nav>
+
+<aside id="panel" class="card ui" aria-label="控制台">
+  <h3>运行</h3>
+  <div class="grid2">
+    <button class="btn" id="switchBtn" type="button" aria-pressed="true">开关：合上</button>
+    <button class="btn" id="pauseBtn" type="button" aria-pressed="false">暂停</button>
+    <button class="btn" id="explodeBtn" type="button" aria-pressed="false">拆开</button>
+    <button class="btn" id="nudgeBtn" type="button">拨一下线圈</button>
+  </div>
+  <div class="row"><label for="speed">演示速度</label><output id="speedOut">1.00×</output></div>
+  <input id="speed" type="range" min="0.05" max="1" step="0.05" value="1">
+
+  <h3>参数</h3>
+  <div class="row"><label for="current">电流</label><output id="currentOut">100%</output></div>
+  <input id="current" type="range" min="10" max="100" step="1" value="100">
+  <div class="row"><label for="field">磁场</label><output id="fieldOut">100%</output></div>
+  <input id="field" type="range" min="30" max="100" step="1" value="100">
+  <div class="row"><span>线圈匝数</span></div>
+  <div class="seg" id="turns" role="group" aria-label="线圈匝数">
+    <button class="btn" type="button" data-turns="1">1</button><button class="btn" type="button" data-turns="2">2</button><button class="btn" type="button" data-turns="5">5</button><button class="btn" type="button" data-turns="10">10</button>
+  </div>
+  <div class="grid2" style="margin-top:8px">
+    <button class="btn" id="supplyBtn" type="button" aria-pressed="false">对调电源</button>
+    <button class="btn" id="magnetBtn" type="button" aria-pressed="false">对调磁极</button>
+  </div>
+
+  <h3>显示</h3>
+  <div class="grid2" id="layers">
+    <button class="btn" type="button" data-layer="labels">名称</button>
+    <button class="btn" type="button" data-layer="current"><i class="dot" style="background:var(--current)"></i>电流</button>
+    <button class="btn" type="button" data-layer="field"><i class="dot" style="background:var(--field)"></i>磁感线</button>
+    <button class="btn" type="button" data-layer="force"><i class="dot" style="background:var(--force)"></i>受力</button>
+    <button class="btn" type="button" data-layer="rotation"><i class="dot" style="background:var(--turn)"></i>转向</button>
+    <button class="btn" type="button" data-layer="hand">左手定则</button>
+  </div>
+
+  <h3>读数</h3>
+  <div class="read"><span>相对转矩</span><b id="rTorque">100</b></div>
+  <div class="read"><span>转速（转/秒）</span><b id="rSpeed">0.0</b></div>
+  <div class="read"><span>转向</span><b id="rWay">—</b></div>
+  <div class="read"><span>红色 A 边的电流</span><b id="rCoil">—</b></div>
+  <p id="status" role="status" aria-live="polite"></p>
+  <div id="perf"></div>
+</aside>
+
+<section id="caption" class="card ui" aria-live="polite">
+  <header><i id="capNo">01 / 09</i><h2 id="capTitle"></h2><span id="capGoal"></span></header>
+  <p id="capText"></p>
+  <p class="note" id="capNote"></p>
+  <div id="task" hidden></div>
+  <footer>
+    <span id="formula"></span>
+    <div class="nav"><button id="prevBtn" type="button" aria-label="上一章">‹</button><button id="nextBtn" type="button" aria-label="下一章">›</button></div>
+  </footer>
+</section>
+
+<div id="toast" class="ui" role="status"></div>
+
+<dialog id="experimentDialog">
+  <header><h2>探究实验</h2><button type="button" data-close aria-label="关闭">×</button></header>
+  <div class="body">
+    <div class="cards" id="experimentCards"></div>
+    <label for="record">实验记录：写下你的观察和结论</label>
+    <textarea id="record" placeholder="例如：断开开关后，线圈没有马上停下……"></textarea>
+  </div>
+</dialog>
+
+<dialog id="quizDialog">
+  <header><h2>课堂测验</h2><button type="button" data-close aria-label="关闭">×</button></header>
+  <div class="body">
+    <div id="quizBar"><i></i></div>
+    <p id="quizQ"></p>
+    <div id="quizOptions"></div>
+    <p id="quizExplain"></p>
+    <div class="quizFoot"><span id="quizScore"></span><span><button id="quizReplay" type="button" disabled>回到这一章看</button> <button id="quizNext" type="button" disabled>下一题</button></span></div>
+  </div>
+</dialog>
+
+<div id="boot"><b>实验台</b><span>正在布置器材</span></div>
+<pre id="err"></pre>
+<script>/*__BUNDLE__*/</script>
+</body>
+</html>
